@@ -1,0 +1,31 @@
+{
+  "name": "Lélis da Cuca — Brechó & Outlet",
+  "short_name": "Lélis da Cuca",
+  "description": "Sistema de gestão da loja Lélis da Cuca",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#171311",
+  "theme_color": "#171311",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
