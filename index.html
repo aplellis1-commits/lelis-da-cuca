@@ -1,0 +1,707 @@
+<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lélis da Cuca — Brechó & Outlet</title>
+<meta name="theme-color" content="#171311">
+<link rel="icon" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lélis da Cuca">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{--rox:#9a7b3f;--rox-c:#f2e8d2;--bg:#f7f4ee;--gold:#c8a85a;--dark:#171311}
+  body{font-family:system-ui,sans-serif;background:var(--bg);color:#1c1b1f}
+  .hidden{display:none!important}
+  /* LOGIN */
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(130% 130% at 50% 0%,#2b2219 0%,#0c0a08 72%)}
+  #login .box{background:#171311;border:1px solid #3a2f22;border-radius:24px;padding:30px 24px;width:100%;max-width:380px;box-shadow:0 14px 50px rgba(0,0,0,.55)}
+  #login .logo{display:block;width:118px;height:118px;object-fit:contain;margin:0 auto 6px;border-radius:50%}
+  #login h1{color:var(--gold);text-align:center;margin-bottom:2px;font-size:27px;font-family:Georgia,'Times New Roman',serif;font-style:italic;letter-spacing:.5px}
+  #login p.sub{text-align:center;color:#bda87a;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:24px}
+  #login label{color:#cbb98e}
+  /* APP */
+  header{background:var(--rox);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  header h1{font-size:17px}
+  header .badge-loja{margin-left:auto;font-size:11px;background:rgba(255,255,255,.2);padding:3px 10px;border-radius:20px}
+  header .sair{background:none;border:none;color:#fff;cursor:pointer;padding:4px;opacity:.85}
+  main{max-width:680px;margin:0 auto;padding:16px;padding-bottom:80px}
+  h2{font-size:20px;margin-bottom:12px}
+  .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  label{display:block;font-size:12px;color:#666;margin-bottom:6px}
+  input,select{width:100%;border:1px solid #ccc;border-radius:10px;padding:11px;font-size:15px;background:#fff}
+  .field{margin-bottom:14px}
+  .btn{width:100%;background:var(--rox);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.5}
+  .btn-out{background:#fff;color:var(--rox);border:2px solid var(--rox)}
+  .btn-row{display:flex;gap:12px}
+  .chip{padding:8px 10px;border:1px solid #ccc;border-radius:10px;background:#fff;font-size:14px;cursor:pointer;color:#555}
+  .chip.on{background:var(--rox);color:#fff;border-color:var(--rox)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .kpi{background:#fff;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .kpi .v{font-size:20px;font-weight:700;margin-top:4px}.kpi .l{font-size:11px;color:#777}
+  .hero{background:var(--rox-c);border-radius:20px;padding:20px;margin-bottom:12px}
+  .hero .v{font-size:28px;font-weight:700;color:#21005D}.hero .l{font-size:13px;color:#4F378B}
+  .search{position:relative;margin-bottom:12px}.search input{padding-left:38px}.search svg{position:absolute;left:11px;top:12px}
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pcard{background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;text-align:left;border:none}
+  .pcard .ph{background:var(--rox-c);border-radius:8px;height:70px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .pcard .cod{color:var(--rox);font-weight:700;font-size:11px}.pcard .cat{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pcard .sub{font-size:11px;color:#888}.pcard .preco{color:var(--rox);font-weight:700;margin-top:4px}
+  .pcard .lj{font-size:10px;color:#16a34a;font-weight:600}
+  .empty{text-align:center;color:#aaa;padding:40px 0}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;display:flex;justify-content:space-around;padding:8px 0;z-index:10}
+  nav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:2px;color:#aaa;cursor:pointer;font-size:10px}
+  nav button.on{color:var(--rox)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20;padding:16px}
+  .modal{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:400px;max-height:90vh;overflow:auto}
+  .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}.badge.est{background:#dcfce7;color:#15803d}
+  .row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}.row .k{color:#777}
+  .msg{font-size:14px;padding:9px;border-radius:10px;margin:8px 0}
+  .msg.ok{background:#dcfce7;color:#15803d}.msg.err{background:#fee2e2;color:#b91c1c}
+  .cart-item{background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .icon-sq{background:var(--rox-c);border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .bar{height:8px;background:var(--rox-c);border-radius:6px;overflow:hidden;margin-top:4px}.bar>div{height:100%;background:var(--rox)}
+  .x{background:none;border:none;cursor:pointer;padding:4px}
+  .del{width:100%;margin-top:12px;border:1px solid #f87171;color:#ef4444;background:#fff;border-radius:12px;padding:10px;font-weight:600;cursor:pointer}
+  .ulist{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:8px}
+  .ulist .top{display:flex;align-items:center;gap:8px}
+  .tag{font-size:10px;padding:2px 7px;border-radius:6px;background:#eee;color:#555}
+  .lojarow{display:flex;align-items:center;justify-content:space-between;padding:10px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:6px}
+  .config-warn{background:#fef3c7;color:#92400e;padding:10px;border-radius:10px;font-size:13px;margin-bottom:14px}
+  .spin{animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+</style></head>
+<body>
+
+<!-- ═══════════ TELA DE LOGIN ═══════════ -->
+<div id="login">
+  <div class="box">
+    <img class="logo" src="logo.png" alt="Lélis da Cuca" onerror="this.style.display='none'">
+    <h1>Lélis da Cuca</h1>
+    <p class="sub">Brechó &amp; Outlet</p>
+    <div id="configWarn"></div>
+    <div class="field"><label>Usuário</label><input id="inUser" autocomplete="username" placeholder="seu usuário"></div>
+    <div class="field"><label>Senha</label><input id="inPass" type="password" autocomplete="current-password" placeholder="sua senha" onkeydown="if(event.key==='Enter')entrar()"></div>
+    <div id="msgLogin"></div>
+    <button class="btn" id="btnLogin" onclick="entrar()">Entrar</button>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="appWrap" class="hidden">
+  <header>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M16 3l-2 2-2-2H8L4 7l3 3v11h10V10l3-3-4-4z"/></svg>
+    <h1 style="font-family:Georgia,serif;font-style:italic;letter-spacing:.3px">Lélis da Cuca</h1>
+    <span class="badge-loja" id="badgeLoja"></span>
+    <button class="sair" onclick="sair()" title="Sair">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4z"/></svg>
+    </button>
+  </header>
+  <main id="app"></main>
+  <nav id="nav"></nav>
+</div>
+
+<script>
+// ═══════════ CONFIG SUPABASE ═══════════
+// 👉 COLE AQUI as 2 chaves do seu projeto Supabase (Settings → API)
+const SUPABASE_URL = "https://lkgchpuhajtlkznwlxmb.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_h3YMrQrDdOgxyKnDDBJ3TA_K9Hnvxeo";
+
+let sb = null;
+const configOK = SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length > 20;
+if (configOK) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════ ESTADO ═══════════
+let me = null;              // usuário logado
+let token = localStorage.getItem("brecho_token") || null;
+let lojas = [];             // lojas acessíveis
+let lojaFiltro = null;      // filtro de loja (master); null = todas
+let view = "dashboard";
+let carrinho = [];
+let pagamento = "pix";
+let descTotal = "";
+let buscaEst = "";
+
+const CATEGORIAS=["Camiseta","Camisa","Regata","Polo","Blusa","Moletom","Jaqueta","Casaco","Calça Jeans","Calça Social","Bermuda","Short","Saia","Vestido","Blazer","Tênis","Sandália","Bota","Bolsa","Cinto","Boné","Acessórios"];
+const TAMANHOS=["PP","P","M","G","GG","XGG","36","38","40","42","44","46"];
+const CONDICOES=["Novo","Ótimo","Bom","Regular"];
+const PAGAMENTOS=[["pix","PIX"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"]];
+const PERMS=[["vendas","Vendas (PDV)"],["estoque","Consultar estoque/preços"],["cadastro","Cadastrar peças"],["relatorios","Relatórios"]];
+
+const brl=v=>"R$ "+(+v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>(s==null?"":s).toString().replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+const rpc=async(fn,args)=>{ const {data,error}=await sb.rpc(fn,args); if(error) throw error; return data; };
+const can=p=> me && (me.papel==="master" || (me.permissoes||[]).includes(p));
+const isMaster=()=> me && me.papel==="master";
+
+// ═══════════ ÍCONES ═══════════
+const ic={
+  home:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+  pkg:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5zm0 2.2L5 8v8l7 3.8L19 16V8l-7-3.8z"/></svg>',
+  cart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.6-1.3 2.4c-.2.3-.3.7-.3 1 0 1.1.9 2 2 2h12v-2H7.4l1-2h7.4c.7 0 1.4-.4 1.7-1l3.6-6.6L20.3 4H5.2L4.3 2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>',
+  plus:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>',
+  users:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',
+  shirt:'<svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" opacity=".5"><path d="M16 3l-2 2-2-2H8L4 7l3 3v11h10V10l3-3-4-4z"/></svg>',
+  search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="#999"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"/></svg>',
+  trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+  x:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>',
+  cash:'<svg width="34" height="34" viewBox="0 0 24 24" fill="#6750A4"><path d="M11.8 11c-2-.5-2.7-1-2.7-1.9 0-1 .9-1.7 2.5-1.7 1.6 0 2.3.8 2.3 2h2c0-1.7-1-3.2-3-3.7V3h-2.6v2.7C8.4 6.1 7 7.3 7 9.1c0 2.1 1.8 3.2 4.3 3.8 2.3.5 2.8 1.4 2.8 2.2 0 .6-.5 1.6-2.5 1.6-1.9 0-2.6-.9-2.7-2H7c.1 2.1 1.7 3.3 3.5 3.7V21h2.6v-2.6c1.9-.4 3.4-1.5 3.4-3.4 0-2.6-2.2-3.5-4.7-4z"/></svg>',
+  store:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>',
+  chart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>',
+  dl:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>'
+};
+
+// ═══════════ BOOT ═══════════
+(async function init(){
+  const cw = document.getElementById("configWarn");
+  if(!configOK){
+    cw.innerHTML = '<div class="config-warn">⚙️ Configure o Supabase: cole a URL e a chave no topo do arquivo (linhas SUPABASE_URL / SUPABASE_ANON_KEY).</div>';
+    document.getElementById("btnLogin").disabled = true;
+    return;
+  }
+  if(token){
+    try{
+      const r = await rpc("app_me",{p_token:token});
+      if(r && !r.erro){ me=r; await pos_login(); return; }
+    }catch(e){}
+    token=null; localStorage.removeItem("brecho_token");
+  }
+})();
+
+async function entrar(){
+  const u=document.getElementById("inUser").value.trim();
+  const p=document.getElementById("inPass").value;
+  const m=document.getElementById("msgLogin");
+  if(!u||!p){ m.innerHTML='<div class="msg err">Preencha usuário e senha.</div>'; return; }
+  document.getElementById("btnLogin").disabled=true;
+  try{
+    const r=await rpc("app_login",{p_user:u,p_senha:p});
+    if(r.erro){ m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>'; document.getElementById("btnLogin").disabled=false; return; }
+    token=r.token; localStorage.setItem("brecho_token",token);
+    const meR=await rpc("app_me",{p_token:token}); me=meR;
+    await pos_login();
+  }catch(e){
+    m.innerHTML='<div class="msg err">Erro de conexão. Verifique as chaves do Supabase.</div>';
+    document.getElementById("btnLogin").disabled=false;
+  }
+}
+
+async function pos_login(){
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("appWrap").classList.remove("hidden");
+  lojas = await rpc("app_lojas",{p_token:token}) || [];
+  if(!isMaster()) lojaFiltro = me.loja_id;   // parceiro/vendedor preso à própria loja
+  view = can("vendas")||true ? "dashboard":"dashboard";
+  render();
+}
+
+function sair(){
+  token=null; me=null; localStorage.removeItem("brecho_token");
+  document.getElementById("appWrap").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("inPass").value="";
+  document.getElementById("btnLogin").disabled=false;
+  document.getElementById("msgLogin").innerHTML="";
+}
+
+// ═══════════ NAV + RENDER ═══════════
+function navItems(){
+  const items=[["dashboard",ic.home,"Início"]];
+  if(can("estoque")) items.push(["estoque",ic.pkg,"Estoque"]);
+  if(can("vendas"))  items.push(["pdv",ic.cart,"Vender"]);
+  if(can("cadastro"))items.push(["cadastro",ic.plus,"Nova"]);
+  if(can("relatorios"))items.push(["relatorios",ic.chart,"Relatórios"]);
+  if(isMaster())     items.push(["admin",ic.users,"Admin"]);
+  return items;
+}
+function renderNav(){
+  document.getElementById("nav").innerHTML = navItems().map(([k,i,l])=>
+    `<button class="${view===k?'on':''}" onclick="go('${k}')">${i}<span>${l}</span></button>`).join("");
+}
+function go(v){ view=v; window.scrollTo(0,0); render(); }
+
+function badgeLojaTxt(){
+  if(isMaster()) return lojaFiltro ? (lojas.find(l=>l.id===lojaFiltro)?.nome||"") : "Todas as lojas";
+  return me.loja_nome||"";
+}
+async function render(){
+  document.getElementById("badgeLoja").textContent = badgeLojaTxt();
+  renderNav();
+  const app=document.getElementById("app");
+  app.innerHTML='<div style="text-align:center;padding:40px;color:#aaa">'+ic.shirt+'<div class="spin" style="margin:10px auto;width:24px;height:24px;border:3px solid #ddd;border-top-color:var(--rox);border-radius:50%"></div></div>';
+  try{
+    if(view==="dashboard") await vDashboard(app);
+    else if(view==="estoque") await vEstoque(app);
+    else if(view==="cadastro") await vCadastro(app);
+    else if(view==="pdv") await vPDV(app);
+    else if(view==="relatorios") await vRelatorios(app);
+    else if(view==="admin") await vAdmin(app);
+  }catch(e){
+    app.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';
+  }
+}
+
+// seletor de loja (master)
+function seletorLoja(){
+  if(!isMaster()) return "";
+  return `<div class="field"><label>Loja</label><select onchange="lojaFiltro=this.value||null;render()">
+    <option value="">Todas as lojas</option>
+    ${lojas.map(l=>`<option value="${l.id}" ${lojaFiltro===l.id?'selected':''}>${esc(l.nome)}</option>`).join("")}
+  </select></div>`;
+}
+
+// ─────── DASHBOARD ───────
+async function vDashboard(app){
+  const d=await rpc("app_dashboard",{p_token:token,p_loja:lojaFiltro});
+  let desemp="";
+  if(isMaster()){
+    const ds=await rpc("app_desempenho_lojas",{p_token:token})||[];
+    if(ds.length){
+      const max=Math.max(...ds.map(x=>+x.vendas_mes),1);
+      desemp=`<div class="card"><div style="font-weight:600;color:var(--rox);font-size:14px;margin-bottom:12px">Desempenho por loja (mês)</div>
+        ${ds.map(x=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:2px"><span>${esc(x.nome)}</span><b>${brl(x.vendas_mes)}</b></div>
+        <div class="bar"><div style="width:${x.vendas_mes/max*100}%"></div></div>
+        <div style="font-size:11px;color:#888;margin-top:2px">${x.estoque} peças em estoque</div></div>`).join("")}
+      </div>`;
+    }
+  }
+  app.innerHTML=`<h2>Início</h2>
+    ${seletorLoja()}
+    <div class="hero"><div class="l">Vendas hoje</div><div class="v">${brl(d.vendas_hoje)}</div></div>
+    <div class="grid2">
+      <div class="kpi"><div class="l">Peças em estoque</div><div class="v">${d.total_estoque}</div></div>
+      <div class="kpi"><div class="l">Valor do estoque</div><div class="v">${brl(d.valor_estoque)}</div></div>
+      <div class="kpi"><div class="l">Vendas no mês</div><div class="v">${brl(d.vendas_mes)}</div></div>
+      <div class="kpi"><div class="l">Peças vendidas (mês)</div><div class="v">${d.pecas_mes}</div></div>
+    </div>
+    ${desemp}
+    <div class="btn-row" style="margin-top:4px">
+      ${can("vendas")?`<button class="btn" onclick="go('pdv')">Nova Venda</button>`:""}
+      ${can("cadastro")?`<button class="btn btn-out" onclick="go('cadastro')">Nova Peça</button>`:""}
+    </div>`;
+}
+
+// ─────── ESTOQUE ───────
+async function vEstoque(app){
+  const lista=await rpc("app_pecas",{p_token:token,p_loja:lojaFiltro,p_busca:buscaEst,p_status:"em_estoque"})||[];
+  app.innerHTML=`<h2>Estoque</h2>
+    ${seletorLoja()}
+    <div class="search">${ic.search}<input value="${esc(buscaEst)}" oninput="buscaEst=this.value;debEst()" placeholder="Código, categoria, marca, cor…"></div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">${lista.length} peça(s)</div>
+    ${lista.length===0?`<div class="empty">${ic.shirt}<div style="margin-top:8px">Nenhuma peça encontrada.</div></div>`:
+    `<div class="pgrid">${lista.map(p=>`<button class="pcard" onclick='abrirDet(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+      <div class="ph">${ic.shirt}</div>
+      ${isMaster()&&!lojaFiltro?`<div class="lj">${esc(p.loja_nome)}</div>`:""}
+      <div class="cod">${esc(p.codigo)}</div>
+      <div class="cat">${esc(p.categoria)}</div>
+      <div class="sub">${esc(p.tamanho||"—")} · ${esc(p.cor||"—")}</div>
+      <div class="preco">${brl(p.preco_venda)}</div>
+    </button>`).join("")}</div>`}`;
+}
+let debTimer; function debEst(){ clearTimeout(debTimer); debTimer=setTimeout(render,350); }
+
+function abrirDet(p){
+  const podeExcluir=can("cadastro");
+  const d=document.createElement("div");
+  d.className="modal-bg"; d.onclick=()=>d.remove();
+  d.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;margin-bottom:12px">
+      <span class="badge est">Em estoque</span>
+      <span style="margin-left:auto;color:var(--rox);font-weight:700">${esc(p.codigo)}</span>
+      <button class="x" onclick="this.closest('.modal-bg').remove()">${ic.x}</button>
+    </div>
+    <div style="border:2px solid #f0f0f0;border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;margin-bottom:12px">
+      ${qrSVG(p.codigo)}<div style="font-family:monospace;font-weight:700;letter-spacing:2px;margin-top:8px">${esc(p.codigo)}</div>
+    </div>
+    ${[["Loja",p.loja_nome],["Categoria",p.categoria],["Gênero",p.genero],["Tamanho",p.tamanho||"—"],["Marca",p.marca||"—"],["Cor",p.cor||"—"],["Condição",p.condicao],...(isMaster()?[["Custo",brl(p.preco_custo)]]:[]),["Venda",brl(p.preco_venda)]].map(([k,v])=>`<div class="row"><span class="k">${k}</span><span>${esc(v)}</span></div>`).join("")}
+    ${podeExcluir?`<button class="del" onclick='excluirPeca("${p.id}")'>${ic.trash} Excluir peça</button>`:""}
+  </div>`;
+  document.body.appendChild(d);
+}
+async function excluirPeca(id){
+  const r=await rpc("app_excluir_peca",{p_token:token,p_id:id});
+  document.querySelector(".modal-bg")?.remove();
+  render();
+}
+
+// QR visual determinístico
+function qrSVG(t){const n=23;let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))>>>0;const rnd=i=>{const x=Math.sin(h+i*97)*10000;return(x-Math.floor(x))>.5;};let r='';for(let y=0;y<n;y++)for(let x=0;x<n;x++){const f=(x<7&&y<7)||(x>=n-7&&y<7)||(x<7&&y>=n-7);let on;if(f){const lx=x<7?x:x-(n-7),ly=y<7?y:y-(n-7);on=(lx===0||lx===6||ly===0||ly===6||(lx>=2&&lx<=4&&ly>=2&&ly<=4));}else on=rnd(y*n+x);if(on)r+=`<rect x="${x}" y="${y}" width="1" height="1"/>`;}return`<svg viewBox="0 0 ${n} ${n}" width="128" height="128" fill="#1a1a1a"><rect width="${n}" height="${n}" fill="#fff"/>${r}</svg>`;}
+
+// ─────── CADASTRO ───────
+let fCad={genero:"feminino",categoria:"",tamanho:"",marca:"",cor:"",condicao:"Bom",precoCusto:"",precoVenda:"",loja:""};
+async function vCadastro(app){
+  if(!isMaster()) fCad.loja=me.loja_id;
+  app.innerHTML=`<h2>Nova Peça</h2><div class="card">
+    ${isMaster()?`<div class="field"><label>Loja de destino *</label><select onchange="fCad.loja=this.value">
+      <option value="">Selecione…</option>${lojas.map(l=>`<option value="${l.id}" ${fCad.loja===l.id?'selected':''}>${esc(l.nome)}</option>`).join("")}
+    </select></div>`:""}
+    <div class="field"><label>Gênero</label><div class="chips">
+      ${[["feminino","Feminino"],["masculino","Masculino"],["unissex","Unissex"]].map(([k,l])=>`<button class="chip ${fCad.genero===k?'on':''}" onclick="fCad.genero='${k}';vCadastro(document.getElementById('app'))">${l}</button>`).join("")}
+    </div></div>
+    <div class="field"><label>Categoria *</label><select onchange="fCad.categoria=this.value">
+      <option value="">Selecione…</option>${CATEGORIAS.map(c=>`<option ${fCad.categoria===c?'selected':''}>${c}</option>`).join("")}</select></div>
+    <div class="grid2">
+      <div class="field"><label>Tamanho</label><select onchange="fCad.tamanho=this.value"><option value="">—</option>${TAMANHOS.map(t=>`<option ${fCad.tamanho===t?'selected':''}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label>Condição</label><select onchange="fCad.condicao=this.value">${CONDICOES.map(c=>`<option ${fCad.condicao===c?'selected':''}>${c}</option>`).join("")}</select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Marca</label><input value="${esc(fCad.marca)}" oninput="fCad.marca=this.value"></div>
+      <div class="field"><label>Cor</label><input value="${esc(fCad.cor)}" oninput="fCad.cor=this.value"></div>
+    </div>
+    ${isMaster()?`<div class="grid2">
+      <div class="field"><label>Custo (R$)</label><input type="number" value="${fCad.precoCusto}" oninput="fCad.precoCusto=this.value"></div>
+      <div class="field"><label>Venda (R$) *</label><input type="number" value="${fCad.precoVenda}" oninput="fCad.precoVenda=this.value"></div>
+    </div>`:`<div class="field"><label>Venda (R$) *</label><input type="number" value="${fCad.precoVenda}" oninput="fCad.precoVenda=this.value"></div>`}
+    <div id="msgCad"></div>
+    <button class="btn" onclick="salvarPeca()">Cadastrar peça</button>
+  </div>
+  <div class="card">
+    <div style="font-weight:600;color:var(--rox);margin-bottom:8px">Importar planilha (Excel)</div>
+    <div style="font-size:12px;color:#777;margin-bottom:10px">Cadastre várias peças de uma vez. Colunas aceitas: <b>Categoria</b>, <b>Gênero</b>, <b>Tamanho</b>, <b>Marca</b>, <b>Cor</b>, <b>Condição</b>, ${isMaster()?'<b>Custo</b>, ':''}<b>Venda</b>. Categoria e Venda são obrigatórias. As peças vão para a loja selecionada${isMaster()?' acima':' (sua loja)'}.</div>
+    <button class="chip" onclick="baixarModelo()" style="margin-bottom:10px">${ic.dl} Baixar modelo .xlsx</button>
+    <input type="file" accept=".xlsx,.xls" onchange="handleImport(this)" style="margin-bottom:10px;font-size:13px;width:100%">
+    ${impRows.length?`<div class="msg ok">${impRows.length} linha(s) carregada(s).</div>`:""}
+    <div id="msgImp"></div>
+    <button class="btn" id="btnImp" ${impRows.length?'':'disabled'} onclick="importarPlanilha()">Importar peças</button>
+  </div>`;
+}
+async function salvarPeca(){
+  const m=document.getElementById("msgCad");
+  if(isMaster()&&!fCad.loja){m.innerHTML='<div class="msg err">Selecione a loja.</div>';return;}
+  if(!fCad.categoria){m.innerHTML='<div class="msg err">Selecione a categoria.</div>';return;}
+  if(!fCad.precoVenda){m.innerHTML='<div class="msg err">Informe o preço de venda.</div>';return;}
+  try{
+    const r=await rpc("app_criar_peca",{p_token:token,p_loja:fCad.loja||null,p_genero:fCad.genero,
+      p_categoria:fCad.categoria,p_tamanho:fCad.tamanho||null,p_marca:fCad.marca||null,
+      p_cor:fCad.cor||null,p_condicao:fCad.condicao,p_custo:+fCad.precoCusto||0,p_venda:+fCad.precoVenda});
+    if(r.erro){m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+    const lj=fCad.loja, gen=fCad.genero, cat=fCad.categoria;
+    fCad={genero:gen,categoria:cat,tamanho:"",marca:"",cor:"",condicao:"Bom",precoCusto:"",precoVenda:"",loja:lj};
+    await vCadastro(document.getElementById("app"));
+    document.getElementById("msgCad").innerHTML='<div class="msg ok">✓ '+esc(r.codigo)+' cadastrada!</div>';
+  }catch(e){m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
+}
+
+// ─────── IMPORTAÇÃO EM LOTE (Excel) ───────
+let impRows=[];
+function baixarModelo(){
+  const ex=[{"Categoria":"Camiseta","Gênero":"Feminino","Tamanho":"M","Marca":"Renner","Cor":"Preto","Condição":"Bom","Custo":5,"Venda":25},
+            {"Categoria":"Calça Jeans","Gênero":"Feminino","Tamanho":"40","Marca":"","Cor":"Azul","Condição":"Ótimo","Custo":10,"Venda":45}];
+  const ws=XLSX.utils.json_to_sheet(ex);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Pecas");
+  XLSX.writeFile(wb,"modelo_importacao_pecas.xlsx");
+}
+function normKey(k){return (k==null?"":k).toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function handleImport(input){
+  const f=input.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const m=document.getElementById("msgImp");
+    try{
+      const wb=XLSX.read(e.target.result,{type:"binary"});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const json=XLSX.utils.sheet_to_json(ws,{defval:""});
+      impRows=json.map(r=>{const o={};Object.keys(r).forEach(k=>o[normKey(k)]=r[k]);return o;});
+      const validas=impRows.filter(r=>(r["categoria"]||"")!=="" && (r["venda"]||"")!=="").length;
+      m.innerHTML='<div class="msg ok">'+impRows.length+' linha(s) lidas · '+validas+' válida(s). Confira a loja e clique em Importar peças.</div>';
+      const b=document.getElementById("btnImp"); if(b) b.disabled=impRows.length===0;
+    }catch(err){
+      impRows=[];
+      m.innerHTML='<div class="msg err">Não consegui ler o arquivo. Use o modelo .xlsx e tente de novo.</div>';
+    }
+  };
+  reader.readAsBinaryString(f);
+}
+async function importarPlanilha(){
+  const m=document.getElementById("msgImp");
+  if(isMaster() && !fCad.loja){m.innerHTML='<div class="msg err">Selecione a loja de destino no topo da tela.</div>';return;}
+  if(!impRows.length){m.innerHTML='<div class="msg err">Nenhuma planilha carregada.</div>';return;}
+  const itens=impRows.map(r=>({
+    categoria:(r["categoria"]||"").toString().trim(),
+    genero:(r["genero"]||"feminino").toString().trim(),
+    tamanho:(r["tamanho"]||"").toString().trim(),
+    marca:(r["marca"]||"").toString().trim(),
+    cor:(r["cor"]||"").toString().trim(),
+    condicao:(r["condicao"]||"Bom").toString().trim(),
+    custo:(r["custo"]===""?"":(""+r["custo"]).replace(",",".")),
+    venda:(r["venda"]===""?"":(""+r["venda"]).replace(",","."))
+  }));
+  const b=document.getElementById("btnImp"); if(b) b.disabled=true;
+  try{
+    const res=await rpc("app_importar_pecas",{p_token:token,p_loja:fCad.loja||null,p_itens:itens});
+    if(res.erro){m.innerHTML='<div class="msg err">'+esc(res.erro)+'</div>'; if(b) b.disabled=false; return;}
+    impRows=[];
+    m.innerHTML='<div class="msg ok">✓ '+res.inseridas+' peça(s) importada(s)'+(res.ignoradas?(' · '+res.ignoradas+' ignorada(s) por falta de Categoria ou Venda'):'')+'.</div>';
+  }catch(e){m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>'; if(b) b.disabled=false;}
+}
+
+// ─────── PDV ───────
+async function vPDV(app){
+  const subtotal=carrinho.reduce((s,c)=>s+(+c.preco_venda),0);
+  const total=Math.max(0,subtotal-(+descTotal||0));
+  app.innerHTML=`<h2>PDV — Nova Venda</h2>
+    ${isMaster()?seletorLoja():""}
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="codPdv" placeholder="Código da peça (ex: BRX-0000001)" onkeydown="if(event.key==='Enter')addPdv()" style="flex:1">
+      <button class="btn" style="width:auto;padding:0 18px" onclick="addPdv()">+</button>
+    </div>
+    <div id="msgPdv"></div>
+    ${carrinho.length===0?`<div class="empty">${ic.cart}<div style="margin-top:8px">Carrinho vazio</div></div>`:
+    carrinho.map((c,i)=>`<div class="cart-item">
+      <div class="icon-sq">${ic.shirt}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12px;color:var(--rox)">${esc(c.codigo)}</div><div style="font-size:11px;color:#888">${esc(c.categoria)} · ${esc(c.tamanho||"—")}</div></div>
+      <span style="font-weight:700;color:var(--rox)">${brl(c.preco_venda)}</span>
+      <button class="x" style="color:#ef4444" onclick="remPdv(${i})">${ic.trash}</button>
+    </div>`).join("")}
+    ${carrinho.length>0?`<div class="card" style="margin-top:8px">
+      <label>Forma de pagamento</label>
+      <div class="grid4" style="margin-bottom:12px">${PAGAMENTOS.map(([k,l])=>`<button class="chip ${pagamento===k?'on':''}" onclick="pagamento='${k}';render()">${l}</button>`).join("")}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:14px">Desconto R$</span><input type="number" value="${descTotal}" oninput="descTotal=this.value;atualizaTotal()" style="width:90px"></div>
+      <div style="border-top:1px solid #eee;padding-top:8px;font-size:14px">
+        <div class="row"><span>Subtotal</span><span>${brl(subtotal)}</span></div>
+        <div class="row" style="color:#16a34a"><span>Desconto</span><span>- ${brl(+descTotal||0)}</span></div>
+        <div class="row" style="font-weight:700;font-size:18px;padding-top:4px"><span>TOTAL</span><span id="totalPdv">${brl(total)}</span></div>
+      </div>
+      <button class="btn" style="margin-top:12px" onclick="finalizar()">Finalizar Venda</button>
+    </div>`:""}`;
+}
+function atualizaTotal(){const st=carrinho.reduce((s,c)=>s+(+c.preco_venda),0);document.getElementById("totalPdv").textContent=brl(Math.max(0,st-(+descTotal||0)));}
+async function addPdv(){
+  const el=document.getElementById("codPdv"); const cod=el.value.trim();
+  const m=document.getElementById("msgPdv");
+  if(!cod) return;
+  const lista=await rpc("app_pecas",{p_token:token,p_loja:lojaFiltro,p_busca:cod,p_status:"em_estoque"})||[];
+  const p=lista.find(x=>x.codigo.toLowerCase()===cod.toLowerCase());
+  if(!p){m.innerHTML='<div class="msg err">Peça não encontrada nesta loja ou indisponível.</div>';return;}
+  if(carrinho.find(c=>c.id===p.id)){m.innerHTML='<div class="msg err">Peça já está no carrinho.</div>';return;}
+  if(carrinho.length && carrinho[0].loja_id!==p.loja_id){m.innerHTML='<div class="msg err">A venda só pode ter peças de uma mesma loja.</div>';return;}
+  carrinho.push(p); el.value=""; render();
+}
+function remPdv(i){carrinho.splice(i,1);render();}
+async function finalizar(){
+  if(!carrinho.length)return;
+  const itens=carrinho.map(c=>({id:c.id,codigo:c.codigo,preco:+c.preco_venda}));
+  try{
+    const r=await rpc("app_registrar_venda",{p_token:token,p_itens:itens,p_pagamento:pagamento,p_desconto:+descTotal||0});
+    if(r.erro){document.getElementById("msgPdv").innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+    carrinho=[];descTotal="";render();
+    document.getElementById("msgPdv").innerHTML='<div class="msg ok">✓ '+esc(r.numero)+' registrada — '+brl(r.total)+'</div>';
+  }catch(e){document.getElementById("msgPdv").innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
+}
+
+// ─────── ADMIN (master) ───────
+let adminTab="usuarios";
+async function vAdmin(app){
+  app.innerHTML=`<h2>Administração</h2>
+    <div class="chips" style="margin-bottom:14px">
+      <button class="chip ${adminTab==='usuarios'?'on':''}" onclick="adminTab='usuarios';render()">Usuários</button>
+      <button class="chip ${adminTab==='lojas'?'on':''}" onclick="adminTab='lojas';render()">Lojas</button>
+    </div>
+    <div id="adminBody"></div>`;
+  if(adminTab==="usuarios") await adminUsuarios();
+  else await adminLojas();
+}
+
+async function adminLojas(){
+  const body=document.getElementById("adminBody");
+  const ls=await rpc("app_lojas",{p_token:token})||[];
+  body.innerHTML=`<div class="card">
+      <label>Nova loja / parceiro</label>
+      <div style="display:flex;gap:8px"><input id="nomeLoja" placeholder="Nome da loja"><button class="btn" style="width:auto;padding:0 16px" onclick="criarLoja()">Criar</button></div>
+      <div id="msgLoja"></div>
+    </div>
+    ${ls.map(l=>`<div class="lojarow"><span>${ic.store} &nbsp;${esc(l.nome)}</span><span class="tag">${l.ativo?'ativa':'inativa'}</span></div>`).join("")}`;
+}
+async function criarLoja(){
+  const nome=document.getElementById("nomeLoja").value.trim();
+  const m=document.getElementById("msgLoja");
+  if(!nome){m.innerHTML='<div class="msg err">Informe o nome.</div>';return;}
+  const r=await rpc("app_criar_loja",{p_token:token,p_nome:nome});
+  if(r.erro){m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+  lojas=await rpc("app_lojas",{p_token:token})||[];
+  render();
+}
+
+let fU={nome:"",usuario:"",senha:"",papel:"vendedor",loja:"",perms:["vendas","estoque"]};
+async function adminUsuarios(){
+  const body=document.getElementById("adminBody");
+  const us=await rpc("app_usuarios",{p_token:token})||[];
+  body.innerHTML=`
+    <div class="card">
+      <div style="font-weight:600;color:var(--rox);margin-bottom:12px">Criar usuário</div>
+      <div class="grid2">
+        <div class="field"><label>Nome</label><input value="${esc(fU.nome)}" oninput="fU.nome=this.value"></div>
+        <div class="field"><label>Usuário (login)</label><input value="${esc(fU.usuario)}" oninput="fU.usuario=this.value"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Senha</label><input value="${esc(fU.senha)}" oninput="fU.senha=this.value"></div>
+        <div class="field"><label>Loja</label><select onchange="fU.loja=this.value">
+          <option value="">Selecione…</option>${lojas.map(l=>`<option value="${l.id}" ${fU.loja===l.id?'selected':''}>${esc(l.nome)}</option>`).join("")}
+        </select></div>
+      </div>
+      <div class="field"><label>Tipo</label><div class="chips">
+        ${[["parceiro","Parceiro (loja)"],["vendedor","Vendedor"]].map(([k,l])=>`<button class="chip ${fU.papel===k?'on':''}" onclick="fU.papel='${k}';render()">${l}</button>`).join("")}
+      </div></div>
+      <div class="field"><label>Permissões de acesso</label><div class="chips">
+        ${PERMS.map(([k,l])=>`<button class="chip ${fU.perms.includes(k)?'on':''}" onclick="togglePerm('${k}')">${l}</button>`).join("")}
+      </div></div>
+      <div id="msgU"></div>
+      <button class="btn" onclick="criarUsuario()">Criar usuário</button>
+    </div>
+    <div style="font-weight:600;color:#555;margin:14px 0 8px;font-size:14px">Usuários cadastrados</div>
+    ${us.length===0?'<div class="empty">Nenhum usuário ainda.</div>':us.map(u=>`<div class="ulist">
+      <div class="top">
+        <b>${esc(u.nome)}</b>
+        <span class="tag">@${esc(u.usuario)}</span>
+        <span class="tag" style="background:${u.ativo?'#dcfce7':'#fee2e2'};color:${u.ativo?'#15803d':'#b91c1c'}">${u.ativo?'ativo':'inativo'}</span>
+        <span style="margin-left:auto;font-size:11px;color:#888">${esc(u.loja_nome||'sem loja')}</span>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:6px">${esc((u.permissoes||[]).join(", "))}</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="chip" style="font-size:12px" onclick="redefinir('${u.id}','${esc(u.nome)}')">Redefinir senha</button>
+        <button class="chip" style="font-size:12px" onclick="toggleU('${u.id}',${!u.ativo})">${u.ativo?'Desativar':'Ativar'}</button>
+      </div>
+    </div>`).join("")}`;
+}
+function togglePerm(k){ fU.perms.includes(k)?fU.perms=fU.perms.filter(x=>x!==k):fU.perms.push(k); render(); }
+async function criarUsuario(){
+  const m=document.getElementById("msgU");
+  if(!fU.nome||!fU.usuario||!fU.senha){m.innerHTML='<div class="msg err">Preencha nome, usuário e senha.</div>';return;}
+  if(!fU.loja){m.innerHTML='<div class="msg err">Selecione a loja.</div>';return;}
+  if(fU.senha.length<4){m.innerHTML='<div class="msg err">Senha muito curta (mín. 4).</div>';return;}
+  const r=await rpc("app_criar_usuario",{p_token:token,p_nome:fU.nome,p_usuario:fU.usuario,
+    p_senha:fU.senha,p_papel:fU.papel,p_loja_id:fU.loja,p_permissoes:fU.perms});
+  if(r.erro){m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+  fU={nome:"",usuario:"",senha:"",papel:"vendedor",loja:"",perms:["vendas","estoque"]};
+  render();
+}
+async function toggleU(id,ativo){ await rpc("app_toggle_usuario",{p_token:token,p_id:id,p_ativo:ativo}); render(); }
+async function redefinir(id,nome){
+  const nova=prompt("Nova senha para "+nome+":");
+  if(!nova) return;
+  if(nova.length<4){alert("Senha muito curta.");return;}
+  const r=await rpc("app_redefinir_senha",{p_token:token,p_id:id,p_senha:nova});
+  if(r.erro){alert(r.erro);return;}
+  alert("Senha redefinida.");
+}
+
+// ─────── RELATÓRIOS ───────
+let relPeriodo=null;
+function periodos(){
+  const now=new Date();
+  const mes=new Date(now.getFullYear(),now.getMonth(),1);
+  const sem=new Date(now); const wd=now.getDay(); sem.setDate(now.getDate()-(wd===0?6:wd-1)); sem.setHours(0,0,0,0);
+  const hoje=new Date(now); hoje.setHours(0,0,0,0);
+  return [
+    ["Hoje",hoje,now],
+    ["Semana",sem,now],
+    ["Mês",mes,now],
+    ["30 dias",new Date(now.getTime()-30*864e5),now],
+    ["90 dias",new Date(now.getTime()-90*864e5),now],
+  ];
+}
+function setPeriodo(i){const p=periodos()[i];relPeriodo={label:p[0],ini:p[1],fim:p[2]};render();}
+
+async function vRelatorios(app){
+  const ps=periodos();
+  if(!relPeriodo){relPeriodo={label:ps[2][0],ini:ps[2][1],fim:ps[2][2]};}
+  const args={p_token:token,p_loja:lojaFiltro,p_ini:relPeriodo.ini.toISOString(),p_fim:relPeriodo.fim.toISOString()};
+  const rv=await rpc("app_rel_vendas",args);
+  const dia=await rpc("app_rel_vendas_dia",args)||[];
+  const pag=await rpc("app_rel_vendas_pagamento",args)||[];
+  const cat=await rpc("app_rel_estoque_categoria",{p_token:token,p_loja:lojaFiltro})||[];
+  const pgLabel={pix:"PIX",dinheiro:"Dinheiro",debito:"Débito",credito:"Crédito"};
+
+  const maxDia=Math.max(...dia.map(d=>+d.total),1);
+  const maxCat=Math.max(...cat.map(c=>+c.qtd),1);
+  const totPag=pag.reduce((s,p)=>s+(+p.total),0)||1;
+
+  app.innerHTML=`<h2>Relatórios</h2>
+    ${seletorLoja()}
+    <div style="font-size:12px;color:#777;margin-bottom:6px">Período</div>
+    <div class="chips" style="margin-bottom:14px">
+      ${ps.map((p,i)=>`<button class="chip ${relPeriodo.label===p[0]?'on':''}" onclick="setPeriodo(${i})">${p[0]}</button>`).join("")}
+    </div>
+
+    <div class="grid2">
+      <div class="kpi"><div class="l">Total de vendas</div><div class="v">${rv.total_vendas}</div></div>
+      <div class="kpi"><div class="l">Peças vendidas</div><div class="v">${rv.total_itens}</div></div>
+      <div class="kpi"><div class="l">Faturamento</div><div class="v">${brl(rv.total)}</div></div>
+      <div class="kpi"><div class="l">Ticket médio</div><div class="v">${brl(rv.ticket)}</div></div>
+    </div>
+
+    ${dia.length?`<div class="card"><div style="font-weight:600;color:var(--rox);font-size:14px;margin-bottom:12px">Vendas por dia</div>
+      ${dia.map(d=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px"><span>${esc(d.dia)} · ${d.qtd}x</span><b>${brl(d.total)}</b></div><div class="bar"><div style="width:${d.total/maxDia*100}%"></div></div></div>`).join("")}
+    </div>`:""}
+
+    ${pag.length?`<div class="card"><div style="font-weight:600;color:var(--rox);font-size:14px;margin-bottom:12px">Formas de pagamento</div>
+      ${pag.map(p=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px"><span>${pgLabel[p.forma]||p.forma} · ${p.qtd}x</span><b>${brl(p.total)} (${(p.total/totPag*100).toFixed(0)}%)</b></div><div class="bar"><div style="width:${p.total/totPag*100}%"></div></div></div>`).join("")}
+    </div>`:""}
+
+    ${cat.length?`<div class="card"><div style="font-weight:600;color:var(--rox);font-size:14px;margin-bottom:12px">Estoque por categoria</div>
+      ${cat.map(c=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px"><span>${esc(c.categoria)}</span><b>${c.qtd} · ${brl(c.valor)}</b></div><div class="bar"><div style="width:${c.qtd/maxCat*100}%"></div></div></div>`).join("")}
+    </div>`:""}
+
+    <div class="card">
+      <div style="font-weight:600;color:var(--rox);font-size:14px;margin-bottom:12px">Exportar</div>
+      <div style="font-size:12px;color:#777;margin-bottom:6px">Estoque atual</div>
+      <div class="btn-row" style="margin-bottom:12px">
+        <button class="btn btn-out" onclick="expEstoque('csv')">${ic.dl} CSV</button>
+        <button class="btn btn-out" onclick="expEstoque('xlsx')">${ic.dl} Excel</button>
+      </div>
+      <div style="font-size:12px;color:#777;margin-bottom:6px">Vendas (${esc(relPeriodo.label)})</div>
+      <div class="btn-row">
+        <button class="btn btn-out" onclick="expVendas('csv')">${ic.dl} CSV</button>
+        <button class="btn btn-out" onclick="expVendas('xlsx')">${ic.dl} Excel</button>
+      </div>
+      <div id="msgExp"></div>
+    </div>`;
+}
+
+async function expEstoque(fmt){
+  const rows=await rpc("app_raw_estoque",{p_token:token,p_loja:lojaFiltro})||[];
+  baixar(rows,"estoque",fmt);
+}
+async function expVendas(fmt){
+  const rows=await rpc("app_raw_vendas",{p_token:token,p_loja:lojaFiltro,p_ini:relPeriodo.ini.toISOString(),p_fim:relPeriodo.fim.toISOString()})||[];
+  baixar(rows,"vendas",fmt);
+}
+function baixar(rows,nome,fmt){
+  const m=document.getElementById("msgExp");
+  if(!rows||!rows.length){ if(m)m.innerHTML='<div class="msg err">Sem dados para exportar neste filtro.</div>'; return; }
+  const stamp=new Date().toISOString().slice(0,10);
+  if(fmt==="xlsx" && window.XLSX){
+    const ws=XLSX.utils.json_to_sheet(rows);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,nome);
+    XLSX.writeFile(wb, nome+"_"+stamp+".xlsx");
+  }else{
+    const heads=Object.keys(rows[0]);
+    let csv="\uFEFF"+heads.join(";")+"\n";
+    rows.forEach(r=>{ csv+=heads.map(h=>{let v=r[h]==null?"":(""+r[h]); if(/[;"\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v;}).join(";")+"\n"; });
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nome+"_"+stamp+".csv"; a.click();
+  }
+  if(m)m.innerHTML='<div class="msg ok">✓ Arquivo gerado.</div>';
+}
+
+// ─────── PWA: manifesto dinâmico (modo aplicativo) ───────
+(function(){
+  try{
+    const mani={name:"Lélis da Cuca — Brechó & Outlet",short_name:"Lélis da Cuca",
+      start_url:".",display:"standalone",orientation:"portrait",
+      background_color:"#171311",theme_color:"#171311",
+      icons:[{src:"logo.png",sizes:"192x192",type:"image/png",purpose:"any"},
+             {src:"logo.png",sizes:"512x512",type:"image/png",purpose:"any"}]};
+    const blob=new Blob([JSON.stringify(mani)],{type:"application/manifest+json"});
+    const link=document.createElement("link");
+    link.rel="manifest"; link.href=URL.createObjectURL(blob);
+    document.head.appendChild(link);
+  }catch(e){}
+})();
+</script>
+</body></html>
