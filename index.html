@@ -358,8 +358,12 @@ async function vCadastro(app){
 
     <div class="field"><label>Foto da peça</label>
       <div id="fotoPreview" style="margin-bottom:8px">${fCad.fotoData?`<img src="${fCad.fotoData}" style="width:100%;max-width:160px;border-radius:12px;display:block">`:''}</div>
-      <input type="file" accept="image/*" onchange="handleFoto(this)" style="font-size:13px;width:100%">
-      <div style="font-size:11px;color:#999;margin-top:4px">No celular, abre câmera ou galeria.</div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-out" onclick="document.getElementById('inCam').click()">📷 Tirar foto</button>
+        <button type="button" class="btn btn-out" onclick="document.getElementById('inGal').click()">🖼️ Galeria</button>
+      </div>
+      <input id="inCam" type="file" accept="image/*" capture="environment" onchange="handleFoto(this)" style="display:none">
+      <input id="inGal" type="file" accept="image/*" onchange="handleFoto(this)" style="display:none">
     </div>
 
     <div id="msgCad"></div>
