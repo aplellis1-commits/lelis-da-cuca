@@ -12,6 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   :root{--rox:#9a7b3f;--rox-c:#f2e8d2;--bg:#f7f4ee;--gold:#c8a85a;--dark:#171311}
@@ -76,6 +77,15 @@
   .spin{animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
   .etqrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:6px;font-size:13px}
   .etqrow input{width:auto}
+  /* leitor QR */
+  #qrOverlay{position:fixed;inset:0;background:#000;z-index:30;display:flex;flex-direction:column}
+  #qrVideo{width:100%;height:100%;object-fit:cover}
+  #qrCanvasHidden{display:none}
+  #qrLine{position:absolute;left:10%;right:10%;top:50%;height:3px;background:var(--rox);box-shadow:0 0 8px var(--rox);transform:translateY(-50%)}
+  #qrFrame{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  #qrFrame .box{width:220px;height:220px;border:3px solid #fff;border-radius:16px;position:relative}
+  #qrMsg{position:absolute;bottom:100px;left:0;right:0;text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 4px #000}
+  #qrClose{position:absolute;top:48px;right:16px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:50%;width:40px;height:40px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
   /* info box de importação */
   .imp-info{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px;font-size:12px;color:#78350f;margin-bottom:10px;line-height:1.6}
   .imp-info b{color:#92400e}
@@ -127,10 +137,11 @@ let pagamento = "pix";
 let descTotal = "";
 let buscaEst = "";
 let debTimer;
+
 const CATEGORIAS=["Camiseta","Camisa","Regata","Polo","Blusa","Cropped","Body","Colete","Moletom","Jaqueta","Casaco","Calça Jeans","Calça Social","Bermuda","Short","Saia","Vestido","Macacão","Macaquinho","Conjunto","Blazer","Tênis","Sandália","Sapato","Tamanco","Bota","Bolsa","Cinto","Boné","Acessórios"];
 const TAMANHOS=["PP","P","M","G","GG","XGG","34","36","38","40","42","44","46"];
 const CONDICOES=["Novo","Ótimo","Bom","Regular"];
-const PAGAMENTOS=[["pix","PIX"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"],["crediario","Crediário"]];
+const PAGAMENTOS=[["pix","PIX"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"]];
 const PERMS=[["vendas","Vendas (PDV)"],["estoque","Consultar estoque/preços"],["cadastro","Cadastrar peças"],["relatorios","Relatórios"]];
 
 const brl=v=>"R$ "+(+v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -161,6 +172,61 @@ const ic={
   dl:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
   qr:'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zm0 10h2v2h-2zm-6-6h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4 0h2v2h-2zm2-2h2v2h-2z"/></svg>'
 };
+
+// ═══════════ LEITOR QR ═══════════
+let qrStream = null;
+let qrAnimFrame = null;
+let qrCallback = null;
+
+function abrirScanner(callback) {
+  qrCallback = callback;
+  const overlay = document.createElement("div");
+  overlay.id = "qrOverlay";
+  overlay.innerHTML = `
+    <video id="qrVideo" autoplay playsinline muted></video>
+    <canvas id="qrCanvasHidden"></canvas>
+    <div id="qrFrame"><div class="box"></div></div>
+    <div id="qrLine"></div>
+    <div id="qrMsg">Aponte para o QR Code da etiqueta</div>
+    <button id="qrClose" onclick="fecharScanner()">✕</button>`;
+  document.body.appendChild(overlay);
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+  }).then(stream => {
+    qrStream = stream;
+    const video = document.getElementById("qrVideo");
+    video.srcObject = stream;
+    video.play();
+    video.addEventListener("loadedmetadata", () => scanLoop(video));
+  }).catch(err => {
+    fecharScanner();
+    alert("Não foi possível acessar a câmera: " + err.message);
+  });
+}
+
+function scanLoop(video) {
+  const canvas = document.getElementById("qrCanvasHidden");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+  if (code && code.data) {
+    fecharScanner();
+    qrCallback(code.data.trim());
+    return;
+  }
+  qrAnimFrame = requestAnimationFrame(() => scanLoop(video));
+}
+
+function fecharScanner() {
+  cancelAnimationFrame(qrAnimFrame);
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  document.getElementById("qrOverlay")?.remove();
+}
 
 // ═══════════ BOOT ═══════════
 (async function init(){
@@ -283,7 +349,7 @@ async function vEstoque(app){
   app.innerHTML=`<h2>Estoque</h2>${seletorLoja()}
     <div class="search">${ic.search}<input value="${esc(buscaEst)}" oninput="buscaEst=this.value;debEst()" placeholder="Código, categoria, marca, cor…"></div>
     ${can("cadastro")?`<button class="btn btn-out" style="margin-bottom:12px" onclick="go('etiquetas')">${ic.qr} Imprimir etiquetas (QR)</button>`:""}
-    <div style="font-size:12px;color:#888;margin-bottom:8px">${lista.length} peça(s)</div>
+    <button class="btn btn-out" style="margin-bottom:12px" onclick="scanEstoque()">📷 Escanear QR Code</button>    <div style="font-size:12px;color:#888;margin-bottom:8px">${lista.length} peça(s)</div>
     ${lista.length===0?`<div class="empty">${ic.shirt}<div style="margin-top:8px">Nenhuma peça encontrada.</div></div>`:
     `<div class="pgrid">${lista.map(p=>`<button class="pcard" onclick='abrirDet(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
       <div class="ph">${p.foto_url?`<img src="${esc(p.foto_url)}" style="width:100%;height:100%;object-fit:cover">`:ic.shirt}</div>
@@ -295,6 +361,15 @@ async function vEstoque(app){
     </button>`).join("")}</div>`}`;
 }
 function debEst(){ clearTimeout(debTimer); debTimer=setTimeout(render,350); }
+
+function scanEstoque(){
+  abrirScanner(async cod=>{
+    const lista=await rpc("app_pecas",{p_token:token,p_loja:lojaFiltro,p_busca:cod,p_status:"em_estoque"})||[];
+    const p=lista.find(x=>x.codigo.toLowerCase()===cod.toLowerCase());
+    if(!p){ alert("Peça não encontrada: "+cod); return; }
+    abrirDet(p);
+  });
+}
 
 // ─────── MODAL DETALHE ───────
 function abrirDet(p){
@@ -699,7 +774,7 @@ function gerarEtiquetas(){
       <div class="qr">${realQR(p.codigo,3)}</div>
       <div class="tipo">${esc(p.categoria)}</div>
       <div class="cod">${esc(p.codigo)}</div>
-      </div>`).join("");
+    </div>`).join("");
   const w=window.open("","_blank");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Etiquetas — Lélis da Cuca</title>
     <style>
@@ -724,7 +799,8 @@ async function vPDV(app){
   app.innerHTML=`<h2>PDV — Nova Venda</h2>${isMaster()?seletorLoja():""}
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <input id="codPdv" placeholder="Código da peça" onkeydown="if(event.key==='Enter')addPdv()" style="flex:1">
-      <button class="btn" style="width:auto;padding:0 18px" onclick="addPdv()">+</button>
+      <button class="btn" style="width:auto;padding:0 14px" onclick="scanPdv()">📷</button>
+      <button class="btn" style="width:auto;padding:0 14px" onclick="addPdv()">+</button>
     </div>
     <div id="msgPdv"></div>
     ${carrinho.length===0?`<div class="empty">${ic.cart}<div style="margin-top:8px">Carrinho vazio</div></div>`:
@@ -746,6 +822,18 @@ async function vPDV(app){
       <button class="btn" style="margin-top:12px" onclick="finalizar()">Finalizar Venda</button>
     </div>`:""}`;
 }
+function scanPdv(){
+  abrirScanner(async cod=>{
+    const m=document.getElementById("msgPdv");
+    const lista=await rpc("app_pecas",{p_token:token,p_loja:lojaFiltro,p_busca:cod,p_status:"em_estoque"})||[];
+    const p=lista.find(x=>x.codigo.toLowerCase()===cod.toLowerCase());
+    if(!p){if(m)m.innerHTML='<div class="msg err">Peça não encontrada: '+esc(cod)+'</div>';return;}
+    if(carrinho.find(c=>c.id===p.id)){if(m)m.innerHTML='<div class="msg err">Peça já está no carrinho.</div>';return;}
+    if(carrinho.length && carrinho[0].loja_id!==p.loja_id){if(m)m.innerHTML='<div class="msg err">A venda só pode ter peças de uma mesma loja.</div>';return;}
+    carrinho.push(p); render();
+  });
+}
+
 function atualizaTotal(){const st=carrinho.reduce((s,c)=>s+(+c.preco_venda),0);document.getElementById("totalPdv").textContent=brl(Math.max(0,st-(+descTotal||0)));}
 async function addPdv(){
   const el=document.getElementById("codPdv"); const cod=el.value.trim();
