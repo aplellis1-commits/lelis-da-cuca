@@ -127,11 +127,10 @@ let pagamento = "pix";
 let descTotal = "";
 let buscaEst = "";
 let debTimer;
-
-const CATEGORIAS=["Camiseta","Camisa","Regata","Polo","Blusa","Moletom","Jaqueta","Casaco","Calça Jeans","Calça Social","Bermuda","Short","Saia","Vestido","Blazer","Tênis","Sandália","Bota","Bolsa","Cinto","Boné","Acessórios"];
+const CATEGORIAS=["Camiseta","Camisa","Regata","Polo","Blusa","Cropped","Body","Colete","Moletom","Jaqueta","Casaco","Calça Jeans","Calça Social","Bermuda","Short","Saia","Vestido","Macacão","Macaquinho","Conjunto","Blazer","Tênis","Sandália","Sapato","Tamanco","Bota","Bolsa","Cinto","Boné","Acessórios"];
 const TAMANHOS=["PP","P","M","G","GG","XGG","34","36","38","40","42","44","46"];
 const CONDICOES=["Novo","Ótimo","Bom","Regular"];
-const PAGAMENTOS=[["pix","PIX"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"]];
+const PAGAMENTOS=[["pix","PIX"],["dinheiro","Dinheiro"],["debito","Débito"],["credito","Crédito"],["crediario","Crediário"]];
 const PERMS=[["vendas","Vendas (PDV)"],["estoque","Consultar estoque/preços"],["cadastro","Cadastrar peças"],["relatorios","Relatórios"]];
 
 const brl=v=>"R$ "+(+v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
