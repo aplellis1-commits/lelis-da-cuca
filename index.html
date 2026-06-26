@@ -76,6 +76,9 @@
   .spin{animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
   .etqrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:6px;font-size:13px}
   .etqrow input{width:auto}
+  /* info box de importação */
+  .imp-info{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px;font-size:12px;color:#78350f;margin-bottom:10px;line-height:1.6}
+  .imp-info b{color:#92400e}
 </style></head>
 <body>
 
@@ -107,7 +110,6 @@
 
 <script>
 // ═══════════ CONFIG SUPABASE ═══════════
-// 👉 COLE AQUI as 2 chaves do seu projeto Supabase
 const SUPABASE_URL = "https://lkgchpuhajtlkznwlxmb.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_h3YMrQrDdOgxyKnDDBJ3TA_K9Hnvxeo";
 let sb = null;
@@ -138,7 +140,6 @@ const rpc=async(fn,args)=>{ const {data,error}=await sb.rpc(fn,args); if(error) 
 const can=p=> me && (me.papel==="master" || (me.permissoes||[]).includes(p));
 const isMaster=()=> me && me.papel==="master";
 
-// QR Code real (escaneável)
 function realQR(texto, cell){
   try{ const qr=qrcode(0,'M'); qr.addData(texto); qr.make(); return qr.createSvgTag({cellSize:cell||4,margin:1}); }
   catch(e){ return '<div style="font-size:10px">'+esc(texto)+'</div>'; }
@@ -154,6 +155,7 @@ const ic={
   search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="#999"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"/></svg>',
   trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
   x:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>',
+  edit:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
   cash:'<svg width="34" height="34" viewBox="0 0 24 24" fill="#9a7b3f"><path d="M11.8 11c-2-.5-2.7-1-2.7-1.9 0-1 .9-1.7 2.5-1.7 1.6 0 2.3.8 2.3 2h2c0-1.7-1-3.2-3-3.7V3h-2.6v2.7C8.4 6.1 7 7.3 7 9.1c0 2.1 1.8 3.2 4.3 3.8 2.3.5 2.8 1.4 2.8 2.2 0 .6-.5 1.6-2.5 1.6-1.9 0-2.6-.9-2.7-2H7c.1 2.1 1.7 3.3 3.5 3.7V21h2.6v-2.6c1.9-.4 3.4-1.5 3.4-3.4 0-2.6-2.2-3.5-4.7-4z"/></svg>',
   store:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>',
   chart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z"/></svg>',
@@ -165,7 +167,7 @@ const ic={
 (async function init(){
   const cw = document.getElementById("configWarn");
   if(!configOK){
-    cw.innerHTML = '<div class="config-warn">⚙️ Configure o Supabase: cole a URL e a chave no topo do arquivo (linhas SUPABASE_URL / SUPABASE_ANON_KEY).</div>';
+    cw.innerHTML = '<div class="config-warn">⚙️ Configure o Supabase: cole a URL e a chave no topo do arquivo.</div>';
     document.getElementById("btnLogin").disabled = true;
     return;
   }
@@ -295,8 +297,10 @@ async function vEstoque(app){
 }
 function debEst(){ clearTimeout(debTimer); debTimer=setTimeout(render,350); }
 
+// ─────── MODAL DETALHE ───────
 function abrirDet(p){
-  const podeExcluir=can("cadastro");
+  const podeEditar = can("cadastro");
+  const podeExcluir = can("cadastro");
   const d=document.createElement("div");
   d.className="modal-bg"; d.onclick=()=>d.remove();
   d.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
@@ -310,11 +314,145 @@ function abrirDet(p){
       ${realQR(p.codigo,4)}<div style="font-family:monospace;font-weight:700;letter-spacing:2px;margin-top:8px">${esc(p.codigo)}</div>
     </div>
     ${[["Loja",p.loja_nome],["Categoria",p.categoria],["Gênero",p.genero],["Tamanho",p.tamanho||"—"],["Marca",p.marca||"—"],["Cor",p.cor||"—"],["Condição",p.condicao],...(isMaster()?[["Custo",brl(p.preco_custo)]]:[]),["Venda",brl(p.preco_venda)]].map(([k,v])=>`<div class="row"><span class="k">${k}</span><span>${esc(v)}</span></div>`).join("")}
-    ${podeExcluir?`<button class="del" onclick='excluirPeca("${p.id}")'>${ic.trash} Excluir peça</button>`:""}
+    <div id="msgDet_${p.id}"></div>
+    <div class="btn-row" style="margin-top:12px">
+      ${podeEditar?`<button class="btn btn-out" style="flex:1" onclick='abrirEdit(${JSON.stringify(p).replace(/'/g,"&#39;")})'>${ic.edit} Editar</button>`:""}
+      ${podeExcluir?`<button class="del" style="margin-top:0;flex:1" onclick='excluirPeca("${p.id}")'>${ic.trash} Excluir</button>`:""}
+    </div>
   </div>`;
   document.body.appendChild(d);
 }
 async function excluirPeca(id){ await rpc("app_excluir_peca",{p_token:token,p_id:id}); document.querySelector(".modal-bg")?.remove(); render(); }
+
+// ─────── MODAL EDIÇÃO ───────
+function abrirEdit(p){
+  // fecha o modal de detalhe
+  document.querySelector(".modal-bg")?.remove();
+
+  // estado local de edição
+  const ed = {
+    tamanho: p.tamanho||"",
+    marca:   p.marca||"",
+    cor:     p.cor||"",
+    condicao: p.condicao||"Bom",
+    precoVenda: p.preco_venda||"",
+    precoCusto: p.preco_custo||"",
+    categoria: p.categoria||"",
+    genero:  p.genero||"feminino",
+    fotoData: null
+  };
+
+  const d=document.createElement("div");
+  d.className="modal-bg"; d.onclick=()=>d.remove();
+
+  function renderEdit(){
+    d.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <b style="font-size:16px">Editar — ${esc(p.codigo)}</b>
+        <button class="x" style="margin-left:auto" onclick="this.closest('.modal-bg').remove()">${ic.x}</button>
+      </div>
+
+      ${/* foto atual ou placeholder */''}
+      <div style="background:var(--rox-c);border-radius:12px;height:120px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;overflow:hidden" id="editFotoPreview">
+        ${ed.fotoData
+          ? `<img src="${ed.fotoData}" style="width:100%;height:100%;object-fit:cover">`
+          : p.foto_url
+            ? `<img src="${esc(p.foto_url)}" style="width:100%;height:100%;object-fit:cover">`
+            : ic.shirt}
+      </div>
+      <div class="btn-row" style="margin-bottom:14px">
+        <button type="button" class="btn btn-out" style="font-size:13px;padding:10px" onclick="document.getElementById('editCam').click()">📷 Câmera</button>
+        <button type="button" class="btn btn-out" style="font-size:13px;padding:10px" onclick="document.getElementById('editGal').click()">🖼️ Galeria</button>
+      </div>
+      <input id="editCam" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleEditFoto(this)">
+      <input id="editGal" type="file" accept="image/*" style="display:none" onchange="handleEditFoto(this)">
+
+      ${isMaster()?`
+      <div class="field"><label>Categoria</label><select id="eCategoria">
+        ${CATEGORIAS.map(c=>`<option ${ed.categoria===c?'selected':''}>${c}</option>`).join("")}
+      </select></div>
+      <div class="field"><label>Gênero</label><div class="chips">
+        ${[["feminino","Feminino"],["masculino","Masculino"],["unissex","Unissex"]].map(([k,l])=>`<button type="button" class="chip ${ed.genero===k?'on':''}" onclick="editSetGenero('${k}')">${l}</button>`).join("")}
+      </div></div>
+      `:''}
+
+      <div class="grid2">
+        <div class="field"><label>Tamanho</label>
+          <input id="eTamanho" list="etamlist" value="${esc(ed.tamanho)}" placeholder="M, 38…">
+          <datalist id="etamlist">${TAMANHOS.map(t=>`<option value="${t}">`).join("")}</datalist>
+        </div>
+        <div class="field"><label>Condição</label><select id="eCondicao">
+          ${CONDICOES.map(c=>`<option ${ed.condicao===c?'selected':''}>${c}</option>`).join("")}
+        </select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Marca</label><input id="eMarca" value="${esc(ed.marca)}"></div>
+        <div class="field"><label>Cor</label><input id="eCor" value="${esc(ed.cor)}"></div>
+      </div>
+      ${isMaster()?`<div class="grid2">
+        <div class="field"><label>Custo (R$)</label><input id="eCusto" type="number" value="${ed.precoCusto}"></div>
+        <div class="field"><label>Venda (R$)</label><input id="eVenda" type="number" value="${ed.precoVenda}"></div>
+      </div>`:`<div class="field"><label>Preço de venda (R$)</label><input id="eVenda" type="number" value="${ed.precoVenda}"></div>`}
+
+      <div id="msgEdit"></div>
+      <button class="btn" style="margin-top:4px" onclick="salvarEdit('${p.id}')">Salvar alterações</button>
+    </div>`;
+  }
+
+  // expõe funções locais no window para os handlers inline
+  window._editEd = ed;
+  window._editRender = renderEdit;
+  window.handleEditFoto = function(input){
+    const f=input.files[0]; if(!f) return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const max=900; let w=img.width,h=img.height;
+        if(w>h && w>max){h=h*max/w;w=max;}else if(h>max){w=w*max/h;h=max;}
+        const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        window._editEd.fotoData=cv.toDataURL("image/jpeg",0.72);
+        const prev=document.getElementById("editFotoPreview");
+        if(prev) prev.innerHTML=`<img src="${window._editEd.fotoData}" style="width:100%;height:100%;object-fit:cover">`;
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(f);
+  };
+  window.editSetGenero = function(k){
+    window._editEd.genero=k; window._editRender();
+  };
+  window.salvarEdit = async function(id){
+    const m=document.getElementById("msgEdit");
+    // lê campos do DOM
+    const payload={
+      tamanho: (document.getElementById("eTamanho")?.value||"").trim(),
+      marca:   (document.getElementById("eMarca")?.value||"").trim(),
+      cor:     (document.getElementById("eCor")?.value||"").trim(),
+      condicao: document.getElementById("eCondicao")?.value||"Bom",
+      preco_venda: +(document.getElementById("eVenda")?.value)||0
+    };
+    if(isMaster()){
+      payload.categoria = document.getElementById("eCategoria")?.value||"";
+      payload.genero    = window._editEd.genero;
+      payload.preco_custo = +(document.getElementById("eCusto")?.value)||0;
+    }
+    if(!payload.preco_venda){ m.innerHTML='<div class="msg err">Informe o preço de venda.</div>'; return; }
+    try{
+      const r=await rpc("app_editar_peca",{p_token:token,p_id:id,p_dados:payload});
+      if(r&&r.erro){ m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>'; return; }
+      // foto nova?
+      if(window._editEd.fotoData){
+        try{ await enviarFoto(id, window._editEd.fotoData); }catch(e){ console.warn("Foto:",e); }
+      }
+      d.remove(); render();
+    }catch(e){ m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>'; }
+  };
+
+  renderEdit();
+  document.body.appendChild(d);
+}
 
 // ─────── CADASTRO ───────
 let fCad={codigoModo:"auto",codigo:"",genero:"feminino",categoria:"",tamanho:"",marca:"",cor:"",condicao:"Bom",precoCusto:"",precoVenda:"",loja:"",fotoData:null};
@@ -370,9 +508,21 @@ async function vCadastro(app){
     <button class="btn" onclick="salvarPeca()">Cadastrar peça</button>
   </div>
 
+  <!-- ══════ IMPORTAÇÃO POR PLANILHA ══════ -->
   <div class="card">
     <div style="font-weight:600;color:var(--rox);margin-bottom:8px">Importar planilha (Excel)</div>
-    <div style="font-size:12px;color:#777;margin-bottom:10px">Cadastre várias peças de uma vez. Colunas aceitas: <b>Código</b> (opcional), <b>Categoria</b>, <b>Gênero</b>, <b>Tamanho</b>, <b>Marca</b>, <b>Cor</b>, <b>Condição</b>, ${isMaster()?'<b>Custo</b>, ':''}<b>Venda</b>. Categoria e Venda são obrigatórias. Sem Código, o sistema gera automático. As peças vão para a loja${isMaster()?' selecionada acima':' (sua loja)'}.</div>
+
+    <div class="imp-info">
+      <b>Como preencher a planilha:</b><br>
+      • <b>Código</b> — opcional; se vazio, o sistema gera automaticamente.<br>
+      • <b>Categoria</b> e <b>Venda</b> — obrigatórias.<br>
+      • <b>Gênero, Tamanho, Marca, Cor, Condição</b> — opcionais.<br>
+      ${isMaster()?'• <b>Custo</b> — opcional (visível só para Master).<br>':''} 
+      ${isMaster()
+        ? '• <b>Loja</b> — nome exato da loja de destino. Se vazio, usa a loja selecionada no topo da tela. Permite direcionar linhas para lojas diferentes numa mesma planilha.'
+        : '• As peças serão cadastradas na <b>sua loja</b> automaticamente.'}
+    </div>
+
     <button class="chip" onclick="baixarModelo()" style="margin-bottom:10px">${ic.dl} Baixar modelo .xlsx</button>
     <input type="file" accept=".xlsx,.xls" onchange="handleImport(this)" style="margin-bottom:10px;font-size:13px;width:100%">
     ${impRows.length?`<div class="msg ok">${impRows.length} linha(s) carregada(s).</div>`:""}
@@ -402,7 +552,6 @@ async function salvarPeca(){
   }catch(e){m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
 }
 
-// Foto: lê, comprime, guarda em memória
 function handleFoto(input){
   const f=input.files[0]; if(!f) return;
   const reader=new FileReader();
@@ -433,14 +582,23 @@ async function enviarFoto(pecaId, dataUrl){
 
 // ─────── IMPORTAÇÃO ───────
 let impRows=[];
+
+// ★ ATUALIZADO: modelo agora inclui coluna Loja (só relevante para Master)
 function baixarModelo(){
-  const ex=[{"Código":"","Categoria":"Camiseta","Gênero":"Feminino","Tamanho":"M","Marca":"Renner","Cor":"Preto","Condição":"Bom","Custo":5,"Venda":25},
-            {"Código":"A-102","Categoria":"Calça Jeans","Gênero":"Feminino","Tamanho":"40","Marca":"","Cor":"Azul","Condição":"Ótimo","Custo":10,"Venda":45}];
+  const ex=[
+    {"Loja":"","Código":"","Categoria":"Camiseta","Gênero":"Feminino","Tamanho":"M","Marca":"Renner","Cor":"Preto","Condição":"Bom","Custo":5,"Venda":25},
+    {"Loja":"Loja Centro","Código":"A-102","Categoria":"Calça Jeans","Gênero":"Feminino","Tamanho":"40","Marca":"","Cor":"Azul","Condição":"Ótimo","Custo":10,"Venda":45},
+    {"Loja":"Loja Norte","Código":"","Categoria":"Vestido","Gênero":"Feminino","Tamanho":"38","Marca":"","Cor":"Floral","Condição":"Bom","Custo":8,"Venda":35}
+  ];
   const ws=XLSX.utils.json_to_sheet(ex);
+  // Largura das colunas para facilitar leitura
+  ws['!cols']=[{wch:14},{wch:10},{wch:14},{wch:10},{wch:10},{wch:14},{wch:10},{wch:10},{wch:8},{wch:8}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Pecas");
   XLSX.writeFile(wb,"modelo_importacao_pecas.xlsx");
 }
+
 function normKey(k){return (k==null?"":k).toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+
 function handleImport(input){
   const f=input.files[0]; if(!f) return;
   const reader=new FileReader();
@@ -451,29 +609,58 @@ function handleImport(input){
       const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});
       impRows=json.map(r=>{const o={};Object.keys(r).forEach(k=>o[normKey(k)]=r[k]);return o;});
       const validas=impRows.filter(r=>(r["categoria"]||"")!=="" && (r["venda"]||"")!=="").length;
-      m.innerHTML='<div class="msg ok">'+impRows.length+' linha(s) lidas · '+validas+' válida(s).</div>';
+      // detecta se alguma linha tem coluna loja preenchida
+      const temLoja=isMaster() && impRows.some(r=>(r["loja"]||"").toString().trim()!=="");
+      m.innerHTML='<div class="msg ok">'+impRows.length+' linha(s) lidas · '+validas+' válida(s)'+(temLoja?' · coluna Loja detectada':'')+'.</div>';
       const b=document.getElementById("btnImp"); if(b) b.disabled=impRows.length===0;
     }catch(err){ impRows=[]; m.innerHTML='<div class="msg err">Não consegui ler o arquivo. Use o modelo .xlsx.</div>'; }
   };
   reader.readAsBinaryString(f);
 }
+
+// ★ ATUALIZADO: resolve loja por nome quando coluna Loja preenchida (Master)
 async function importarPlanilha(){
   const m=document.getElementById("msgImp");
-  if(isMaster() && !fCad.loja){m.innerHTML='<div class="msg err">Selecione a loja de destino no topo da tela.</div>';return;}
   if(!impRows.length){m.innerHTML='<div class="msg err">Nenhuma planilha carregada.</div>';return;}
-  const itens=impRows.map(r=>({
-    codigo:(r["codigo"]||"").toString().trim(),
-    categoria:(r["categoria"]||"").toString().trim(),
-    genero:(r["genero"]||"feminino").toString().trim(),
-    tamanho:(r["tamanho"]||"").toString().trim(),
-    marca:(r["marca"]||"").toString().trim(),
-    cor:(r["cor"]||"").toString().trim(),
-    condicao:(r["condicao"]||"Bom").toString().trim(),
-    custo:(r["custo"]===""?"":(""+r["custo"]).replace(",",".")),
-    venda:(r["venda"]===""?"":(""+r["venda"]).replace(",","."))
-  }));
+
+  // Se não-Master: loja fixa
+  // Se Master sem seletor e sem coluna loja: exige seletor
+  const temColunaLoja = impRows.some(r=>(r["loja"]||"").toString().trim()!=="");
+  if(isMaster() && !fCad.loja && !temColunaLoja){
+    m.innerHTML='<div class="msg err">Selecione a loja de destino no topo da tela ou preencha a coluna "Loja" na planilha.</div>'; return;
+  }
+
+  // monta mapa nome→id para resolver coluna Loja
+  const lojaMap={};
+  lojas.forEach(l=>{ lojaMap[l.nome.trim().toLowerCase()]=l.id; });
+
+  const itens=impRows.map(r=>{
+    // resolve loja da linha: coluna Loja → fallback seletor → null (para não-Master o back usa loja do token)
+    let lojaId = fCad.loja || null;
+    if(isMaster()){
+      const nomeLinha=(r["loja"]||"").toString().trim();
+      if(nomeLinha){
+        const resolvido = lojaMap[nomeLinha.toLowerCase()];
+        lojaId = resolvido || fCad.loja || null; // se nome não bater, cai no seletor
+      }
+    }
+    return {
+      loja_id: lojaId,
+      codigo:(r["codigo"]||"").toString().trim(),
+      categoria:(r["categoria"]||"").toString().trim(),
+      genero:(r["genero"]||"feminino").toString().trim(),
+      tamanho:(r["tamanho"]||"").toString().trim(),
+      marca:(r["marca"]||"").toString().trim(),
+      cor:(r["cor"]||"").toString().trim(),
+      condicao:(r["condicao"]||"Bom").toString().trim(),
+      custo:(r["custo"]===""?"":(""+r["custo"]).replace(",",".")),
+      venda:(r["venda"]===""?"":(""+r["venda"]).replace(",","."))
+    };
+  });
+
   const b=document.getElementById("btnImp"); if(b) b.disabled=true;
   try{
+    // ★ passa loja_id por item; o RPC app_importar_pecas precisa aceitar loja_id dentro de cada item
     const res=await rpc("app_importar_pecas",{p_token:token,p_loja:fCad.loja||null,p_itens:itens});
     if(res.erro){m.innerHTML='<div class="msg err">'+esc(res.erro)+'</div>'; if(b) b.disabled=false; return;}
     impRows=[];
