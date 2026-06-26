@@ -280,6 +280,7 @@ function navItems(){
   if(can("vendas"))  items.push(["pdv",ic.cart,"Vender"]);
   if(can("cadastro"))items.push(["cadastro",ic.plus,"Nova"]);
   if(can("relatorios"))items.push(["relatorios",ic.chart,"Relat."]);
+  if(can("vendas"))    items.push(["devolucao",ic.x,"Devol."]);
   if(isMaster())     items.push(["admin",ic.users,"Admin"]);
   return items;
 }
@@ -303,6 +304,7 @@ async function render(){
     else if(view==="cadastro") await vCadastro(app);
     else if(view==="pdv") await vPDV(app);
     else if(view==="relatorios") await vRelatorios(app);
+    else if(view==="devolucao")  await vDevolucao(app);
     else if(view==="etiquetas") await vEtiquetas(app);
     else if(view==="admin") await vAdmin(app);
   }catch(e){ app.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>'; }
@@ -856,6 +858,128 @@ async function finalizar(){
     carrinho=[];descTotal="";render();
     document.getElementById("msgPdv").innerHTML='<div class="msg ok">✓ '+esc(r.numero)+' registrada — '+brl(r.total)+'</div>';
   }catch(e){document.getElementById("msgPdv").innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
+}
+
+// ─────── DEVOLUÇÃO ───────
+let devVenda = null;
+let devSelItens = []; // itens selecionados para devolução parcial
+
+async function vDevolucao(app){
+  app.innerHTML=`<h2>Devolução</h2>
+    <div class="card">
+      <div style="font-size:13px;color:#777;margin-bottom:10px">Digite o número da venda ou escaneie o QR Code de uma peça da venda.</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="inDevNum" placeholder="Ex: VDA-00001" style="flex:1" onkeydown="if(event.key==='Enter')buscarVenda()">
+        <button class="btn" style="width:auto;padding:0 14px" onclick="scanDev()">📷</button>
+        <button class="btn" style="width:auto;padding:0 14px" onclick="buscarVenda()">Buscar</button>
+      </div>
+      <div id="msgDev"></div>
+    </div>
+    ${devVenda ? renderDevVenda() : ''}`;
+}
+
+function renderDevVenda(){
+  const v = devVenda;
+  const pgLabel={pix:"PIX",dinheiro:"Dinheiro",debito:"Débito",credito:"Crédito"};
+  const totalSel = devSelItens.reduce((s,i)=>s+(+i.preco),0);
+  const todasSel = devSelItens.length === (v.itens||[]).length;
+
+  return `<div class="card">
+    <div style="font-weight:700;color:var(--rox);font-size:16px;margin-bottom:4px">${esc(v.numero)}</div>
+    <div style="font-size:12px;color:#888;margin-bottom:12px">${new Date(v.criado_em).toLocaleString('pt-BR')} · ${pgLabel[v.pagamento]||v.pagamento}</div>
+
+    <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">Selecione as peças a devolver:</div>
+    ${(v.itens||[]).map(i=>{
+      const sel = devSelItens.find(x=>x.peca_id===i.peca_id);
+      return `<label style="display:flex;align-items:center;gap:10px;background:${sel?'#fef3c7':'#fff'};border:1px solid ${sel?'#fbbf24':'#eee'};border-radius:12px;padding:10px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" ${sel?'checked':''} onchange="devToggleItem(${JSON.stringify(i).replace(/"/g,'&quot;')})" style="width:18px;height:18px;accent-color:var(--rox)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:12px;color:var(--rox)">${esc(i.codigo)}</div>
+          <div style="font-size:11px;color:#888">${esc(i.categoria||'—')} · ${esc(i.tamanho||'—')} · ${esc(i.cor||'—')}</div>
+        </div>
+        <span style="font-weight:700;color:var(--rox)">${brl(i.preco)}</span>
+      </label>`;
+    }).join('')}
+
+    <div style="border-top:1px solid #eee;padding-top:10px;margin-top:4px">
+      ${v.desconto>0?`<div class="row"><span class="k">Desconto original</span><span>- ${brl(v.desconto)}</span></div>`:''}
+      <div class="row" style="font-size:13px"><span class="k">Total da venda</span><span>${brl(v.total)}</span></div>
+      <div class="row" style="font-weight:700;font-size:17px;color:${devSelItens.length?'#ef4444':'#aaa'}">
+        <span>${todasSel?'Estorno total':'Estorno parcial'}</span>
+        <span>${brl(totalSel)}</span>
+      </div>
+    </div>
+
+    ${devSelItens.length===0?'<div class="msg err" style="margin-top:8px">Selecione ao menos uma peça.</div>':''}
+
+    <div style="background:#fef3c7;border-radius:10px;padding:10px;font-size:13px;color:#92400e;margin-top:10px">
+      ⚠️ As peças selecionadas voltarão ao estoque${todasSel?' e a venda será cancelada nos relatórios':''}.
+    </div>
+    <div id="msgDevConf"></div>
+    <button class="btn" style="margin-top:12px;background:${devSelItens.length?'#ef4444':'#ccc'}" 
+      ${devSelItens.length?'':'disabled'}
+      onclick="${todasSel?'confirmarDevolucaoTotal()':'confirmarDevolucaoParcial()'}">
+      ${todasSel?'Devolver tudo':'Devolver selecionadas'} — ${brl(totalSel)}
+    </button>
+    <button class="btn btn-out" style="margin-top:8px" onclick="devVenda=null;devSelItens=[];render()">Cancelar</button>
+  </div>`;
+}
+
+function devToggleItem(item){
+  const idx = devSelItens.findIndex(x=>x.peca_id===item.peca_id);
+  if(idx>=0) devSelItens.splice(idx,1); else devSelItens.push(item);
+  // re-renderiza só o card sem recarregar tudo
+  const app=document.getElementById("app");
+  const cards=app.querySelectorAll(".card");
+  if(cards[1]) cards[1].outerHTML=renderDevVenda();
+  else app.innerHTML+=renderDevVenda();
+}
+
+async function buscarVenda(){
+  const num = (document.getElementById("inDevNum")?.value||"").trim().toUpperCase();
+  const m = document.getElementById("msgDev");
+  if(!num){ m.innerHTML='<div class="msg err">Digite o número da venda.</div>'; return; }
+  try{
+    const r = await rpc("app_buscar_venda",{p_token:token, p_numero:num});
+    if(r.erro){ m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>'; devVenda=null; devSelItens=[]; render(); return; }
+    devVenda=r; devSelItens=[]; render();
+  }catch(e){ m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>'; }
+}
+
+function scanDev(){
+  abrirScanner(async cod=>{
+    const el=document.getElementById("inDevNum");
+    if(el) el.value=cod;
+    await buscarVenda();
+  });
+}
+
+async function confirmarDevolucaoTotal(){
+  const m=document.getElementById("msgDevConf");
+  if(!devVenda) return;
+  try{
+    const r=await rpc("app_estornar_venda",{p_token:token,p_venda_id:devVenda.id});
+    if(r.erro){m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+    devVenda=null; devSelItens=[]; render();
+    setTimeout(()=>{
+      const md=document.getElementById("msgDev");
+      if(md) md.innerHTML='<div class="msg ok">✓ Devolução total registrada! Todas as peças voltaram ao estoque.</div>';
+    },100);
+  }catch(e){m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
+}
+
+async function confirmarDevolucaoParcial(){
+  const m=document.getElementById("msgDevConf");
+  if(!devVenda||!devSelItens.length) return;
+  try{
+    const r=await rpc("app_estornar_parcial",{p_token:token,p_venda_id:devVenda.id,p_itens:devSelItens});
+    if(r.erro){m.innerHTML='<div class="msg err">'+esc(r.erro)+'</div>';return;}
+    devVenda=null; devSelItens=[]; render();
+    setTimeout(()=>{
+      const md=document.getElementById("msgDev");
+      if(md) md.innerHTML='<div class="msg ok">✓ Devolução parcial registrada! Peças selecionadas voltaram ao estoque.</div>';
+    },100);
+  }catch(e){m.innerHTML='<div class="msg err">Erro: '+esc(e.message||e)+'</div>';}
 }
 
 // ─────── RELATÓRIOS ───────
